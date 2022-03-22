@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FaBars, FaGithub, FaPlus, FaSpinner, FaTrash } from "react-icons/fa";
 import api from "../../services/api";
 import { Container, DeleteButton, Form, List, SubmitButton } from "./styles";
@@ -7,9 +7,23 @@ function Main() {
   const [newRepo, setNewRepo] = useState("");
   const [repositorios, setRepositorios] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState(null);
+
+  useEffect(() => {
+    const repoStorage = localStorage.getItem("repos");
+
+    if (repoStorage) {
+      setRepositorios(JSON.parse(repoStorage));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("repos", JSON.stringify(repositorios));
+  }, [repositorios]);
 
   function handleInputChange(e) {
     setNewRepo(e.target.value);
+    setAlert(null);
   }
 
   const handleDeleteRepo = useCallback(
@@ -26,7 +40,19 @@ function Main() {
 
       async function submit() {
         setLoading(true);
+        setAlert(null);
         try {
+          if (newRepo === "") {
+            throw new Error("Você precisa indicar um repositório!");
+          }
+
+          const alreadyAdded = repositorios.find(
+            (repo) => repo.name === newRepo
+          );
+          if (alreadyAdded) {
+            throw new Error(`Repositório ${newRepo} duplicado!`);
+          }
+
           const response = await api.get(`repos/${newRepo}`);
 
           const data = {
@@ -37,6 +63,7 @@ function Main() {
           setNewRepo("");
         } catch (error) {
           console.log(error);
+          setAlert(true);
         } finally {
           setLoading(false);
         }
@@ -44,7 +71,7 @@ function Main() {
 
       submit();
     },
-    [newRepo]
+    [newRepo, repositorios]
   );
 
   return (
@@ -54,7 +81,7 @@ function Main() {
         Meus Repositórios
       </h1>
 
-      <Form onSubmit={handleSubmit}>
+      <Form onSubmit={handleSubmit} error={alert}>
         <input
           type="text"
           placeholder="Adicionar Repositórios"
