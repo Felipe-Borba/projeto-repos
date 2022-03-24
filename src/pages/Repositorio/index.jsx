@@ -5,6 +5,7 @@ import api from "../../services/api";
 import {
   BackButton,
   Container,
+  FilterList,
   IssuesList,
   Loading,
   Owner,
@@ -18,6 +19,12 @@ function Repositorio() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [filterIndex, setFilterIndex] = useState(0);
+  const [filters, setFilters] = useState([
+    { state: "all", label: "Todas", active: true },
+    { state: "open", label: "Abertas", active: false },
+    { state: "closed", label: "Fechadas", active: false },
+  ]);
 
   useEffect(() => {
     async function load() {
@@ -25,7 +32,7 @@ function Repositorio() {
         api.get(`/repos/${params.repositorio}`),
         api.get(`/repos/${params.repositorio}/issues`, {
           params: {
-            state: "open",
+            state: filters.find((f) => f.active).state,
             per_page: 5,
           },
         }),
@@ -37,7 +44,7 @@ function Repositorio() {
     }
 
     load();
-  }, [params]);
+  }, [params, filters]);
 
   useEffect(() => {
     async function loadIssue() {
@@ -45,7 +52,7 @@ function Repositorio() {
         `/repos/${params.repositorio}/issues`,
         {
           params: {
-            state: "open",
+            state: filters[filterIndex].state,
             per_page: 5,
             page,
           },
@@ -56,10 +63,14 @@ function Repositorio() {
     }
 
     loadIssue();
-  }, [page, params.repositorio]);
+  }, [page, params.repositorio, filters, filterIndex]);
 
   function handlePage(action) {
     setPage(action === "back" ? page - 1 : page + 1);
+  }
+
+  function handleFilter(index) {
+    setFilterIndex(index);
   }
 
   if (loading) {
@@ -81,6 +92,18 @@ function Repositorio() {
         <h1>{repositorio.name}</h1>
         <p>{repositorio.description}</p>
       </Owner>
+
+      <FilterList active={filterIndex}>
+        {filters.map((filter, index) => (
+          <button
+            type="button"
+            key={filter.label}
+            onClick={() => handleFilter(index)}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </FilterList>
 
       <IssuesList>
         {issues.map((issue) => (
@@ -110,6 +133,7 @@ function Repositorio() {
         >
           Voltar
         </button>
+
         <button type="button" onClick={() => handlePage("next")}>
           Proximo
         </button>
